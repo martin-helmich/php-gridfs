@@ -1,0 +1,13 @@
+{
+    "name": "helmich/mongodb-gridfs",
+    "description": "GridFS implementation for the new MongoDB extension",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Martin Helmich",
+            "email": "kontakt@martin-helmich.de"
+        }
+    ],
+    "require": {}
+}
