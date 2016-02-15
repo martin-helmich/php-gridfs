@@ -1,13 +1,21 @@
 {
-    "name": "helmich/mongodb-gridfs",
-    "description": "GridFS implementation for the new MongoDB extension",
-    "type": "library",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "Martin Helmich",
-            "email": "kontakt@martin-helmich.de"
-        }
-    ],
-    "require": {}
+  "name": "helmich/mongodb-gridfs",
+  "description": "GridFS implementation for the new MongoDB extension",
+  "type": "library",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Martin Helmich",
+      "email": "kontakt@martin-helmich.de"
+    }
+  ],
+  "require": {
+    "ext-mongodb": "*",
+    "mongodb/mongodb": "^1.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Helmich\\GridFS\\": "src"
+    }
+  }
 }
