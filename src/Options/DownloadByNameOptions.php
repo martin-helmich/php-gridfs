@@ -3,10 +3,12 @@ namespace Helmich\GridFS\Options;
 
 class DownloadByNameOptions
 {
+    const REVISION_NEWEST = -1;
+
     /** @var int */
     private $revision;
 
-    public function __construct(int $revision = -1)
+    public function __construct(int $revision = self::REVISION_NEWEST)
     {
         $this->revision = $revision;
     }

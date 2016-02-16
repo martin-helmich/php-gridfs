@@ -9,6 +9,12 @@ class BucketOptions
     /** @var int */
     private $chunkSizeBytes;
 
+    /** @var string */
+    private $filesName = 'files';
+
+    /** @var string */
+    private $chunksName = 'chunks';
+
     public function __construct(string $bucketName = 'fs', int $chunkSizeBytes = 255 << 10)
     {
         $this->bucketName     = $bucketName;
@@ -38,6 +44,28 @@ class BucketOptions
     }
 
     /**
+     * @param string $filesName
+     * @return self
+     */
+    public function withFilesName(string $filesName): BucketOptions
+    {
+        $clone            = clone $this;
+        $clone->filesName = $filesName;
+        return $clone;
+    }
+
+    /**
+     * @param string $chunksName
+     * @return self
+     */
+    public function withChunksName(string $chunksName): BucketOptions
+    {
+        $clone             = clone $this;
+        $clone->chunksName = $chunksName;
+        return $clone;
+    }
+
+    /**
      * @return string
      */
     public function bucketName(): string
@@ -51,6 +79,22 @@ class BucketOptions
     public function chunkSizeBytes(): int
     {
         return $this->chunkSizeBytes;
+    }
+
+    /**
+     * @return string
+     */
+    public function filesName(): string
+    {
+        return $this->filesName;
+    }
+
+    /**
+     * @return string
+     */
+    public function chunksName(): string
+    {
+        return $this->chunksName;
     }
 
 }

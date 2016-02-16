@@ -1,20 +1,13 @@
 <?php
 namespace Helmich\GridFS\Stream;
 
-use Helmich\GridFS\Exception\FileNotFoundException;
 use MongoDB\BSON\Binary;
-use MongoDB\BSON\ObjectID;
 use MongoDB\Collection;
 use MongoDB\Driver\Cursor;
+use MongoDB\Model\BSONDocument;
 
 class DownloadStream implements DownloadStreamInterface
 {
-
-    /** @var ObjectID */
-    private $id;
-
-    /** @var Collection */
-    private $files;
 
     /** @var Collection */
     private $chunks;
@@ -27,12 +20,15 @@ class DownloadStream implements DownloadStreamInterface
 
     /** @var string */
     private $buf = '';
+    /**
+     * @var BSONDocument
+     */
+    private $file;
 
-    public function __construct(ObjectID $id, Collection $files, Collection $chunks)
+    public function __construct($file, Collection $chunks)
     {
-        $this->id     = $id;
-        $this->files  = $files;
         $this->chunks = $chunks;
+        $this->file   = $file;
     }
 
     public function read(int $n): string
@@ -66,15 +62,15 @@ class DownloadStream implements DownloadStreamInterface
         return $this->eof;
     }
 
+    public function file(): BSONDocument
+    {
+        return $this->file;
+    }
+
     private function initCursor()
     {
         if (!$this->cursor) {
-            $fileObj = $this->files->findOne(['_id' => $this->id]);
-            if (!$fileObj) {
-                throw new FileNotFoundException($this->id);
-            }
-
-            $this->cursor = $this->chunks->find(['files_id' => $this->id], ['sort' => ['n' => 1]]);
+            $this->cursor = $this->chunks->find(['files_id' => $this->file['_id']], ['sort' => ['n' => 1]]);
         }
     }
 }

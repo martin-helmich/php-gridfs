@@ -1,171 +1,94 @@
 <?php
 namespace Helmich\GridFS;
 
-use Helmich\GridFS\Exception\FileNotFoundException;
+use Helmich\GridFS\Concern\DeletionConcern;
+use Helmich\GridFS\Concern\DownloadConcern;
+use Helmich\GridFS\Concern\SearchConcern;
+use Helmich\GridFS\Concern\UploadConcern;
 use Helmich\GridFS\Options\BucketOptions;
 use Helmich\GridFS\Options\DownloadByNameOptions;
 use Helmich\GridFS\Options\FindOptions;
 use Helmich\GridFS\Options\UploadOptions;
-use Helmich\GridFS\Stream\DownloadStream;
 use Helmich\GridFS\Stream\DownloadStreamInterface;
-use Helmich\GridFS\Stream\UploadStream;
 use Helmich\GridFS\Stream\UploadStreamInterface;
 use MongoDB\BSON\ObjectID;
-use MongoDB\Collection;
 use MongoDB\Database;
 
 class Bucket implements BucketInterface
 {
 
-    /** @var Database */
-    private $database;
+    /** @var UploadConcern */
+    private $uploadConcern;
 
-    /** @var BucketOptions */
-    private $options;
+    /** @var DownloadConcern */
+    private $downloadConcern;
 
-    /** @var Collection */
-    private $chunks;
+    /** @var SearchConcern */
+    private $searchConcern;
 
-    /** @var Collection */
-    private $files;
+    /** @var DeletionConcern */
+    private $deletionConcern;
 
-    public function __construct(Database $database, BucketOptions $options)
+    public function __construct(Database $database, BucketOptions $options = null)
     {
-        $this->database = $database;
-        $this->options  = $options;
+        $options  = $options ?? new BucketOptions();
 
-        $this->files  = $database->selectCollection($options->bucketName() . '.files');
-        $this->chunks = $database->selectCollection($options->bucketName() . '.chunks');
+        $files  = $database->selectCollection($options->bucketName() . '.' . $options->filesName());
+        $chunks = $database->selectCollection($options->bucketName() . '.' . $options->chunksName());
+
+        $this->uploadConcern   = new UploadConcern($this, $files, $chunks, $options);
+        $this->downloadConcern = new DownloadConcern($this, $files, $chunks, $options);
+        $this->searchConcern   = new SearchConcern($this, $files, $chunks, $options);
+        $this->deletionConcern = new DeletionConcern($this, $files, $chunks, $options);
     }
 
     public function openUploadStream(string $filename, UploadOptions $options = null): UploadStreamInterface
     {
-        $this->initIfNecessary();
-
-        $options    = $options ?? new UploadOptions();
-        $chunkSize  = $options->chunkSizeBytes() ?? $this->options->chunkSizeBytes();
-        $documentId = new ObjectID();
-
-        return new UploadStream($filename, $chunkSize, $documentId, $options, $this->files, $this->chunks);
+        return $this->uploadConcern->openUploadStream($filename, $options);
     }
 
     public function uploadFromStream(string $filename, $stream, UploadOptions $options = null): ObjectID
     {
-        $this->initIfNecessary();
-
-        $options      = $options ?? new UploadOptions();
-        $chunkSize    = $options->chunkSizeBytes() ?? $this->options->chunkSizeBytes();
-        $targetStream = $this->openUploadStream($filename, $options);
-
-        while ($data = fread($stream, $chunkSize)) {
-            $targetStream->write($data);
-        }
-
-        $targetStream->close();
-        return $targetStream->fileId();
-    }
-
-    public function openDownloadStream(ObjectID $objectID): DownloadStreamInterface
-    {
-        return new DownloadStream($objectID, $this->files, $this->chunks);
-    }
-
-    public function downloadToStream(ObjectID $objectID, $stream)
-    {
-        $downloadStream = $this->openDownloadStream($objectID);
-        while (!$downloadStream->eof()) {
-            $next = $downloadStream->read(4096);
-            fwrite($stream, $next);
-        }
-    }
-
-    public function delete(ObjectID $objectID)
-    {
-        $this->files->deleteMany(['_id' => $objectID]);
-        $this->chunks->deleteMany(['files_id' => $objectID]);
-    }
-
-    private function initIfNecessary()
-    {
-        if ($this->files->count() === 0) {
-            $this->files->createIndex(['filename' => 1, 'uploadDate' => 1]);
-            $this->chunks->createIndex(['files_id' => 1, 'n' => 1], ['unique' => true]);
-        }
-    }
-
-    public function find(array $filter, FindOptions $options = null): \Traversable
-    {
-        $options     = $options ?? new FindOptions();
-        $optionArray = [];
-
-        if ($options->batchSize()) {
-            $optionArray['batchSize'] = $options->batchSize();
-        }
-
-        if ($options->limit()) {
-            $optionArray['limit'] = $options->limit();
-        }
-
-        if ($options->maxTimeMs()) {
-            $optionArray['maxTimeMS'] = $options->maxTimeMs();
-        }
-
-        if ($options->noCursorTimeout()) {
-            $optionArray['noCursorTimeout'] = $options->noCursorTimeout();
-        }
-
-        if ($options->skip()) {
-            $optionArray['skip'] = $options->skip();
-        }
-
-        if ($options->sort()) {
-            $optionArray['sort'] = $options->sort();
-        }
-
-        $files = $this->files->find($filter, $optionArray);
-        return $files;
-    }
-
-    public function openDownloadStreamByName(string $filename, DownloadByNameOptions $options = null): DownloadStreamInterface
-    {
-        $findOptions = (new FindOptions())->withSort(['uploadDate' => 1]);
-
-        if ($options->revision() >= 0) {
-            $findOptions = $findOptions
-                ->withSkip($options->revision())
-                ->withLimit(1);
-        } else {
-            $findOptions = $findOptions
-                ->withSort(['uploadDate' => -1])
-                ->withSkip(abs($options->revision() + 1))
-                ->withLimit(1);
-        }
-
-        $files = $this->find(['filename' => $filename], $findOptions);
-        foreach ($files as $file) {
-            return $this->openDownloadStream($file['_id']);
-        }
-
-        throw new FileNotFoundException($filename);
-    }
-
-    public function downloadToStreamByName(string $filename, $stream, DownloadByNameOptions $options = null)
-    {
-        $downloadStream = $this->openDownloadStreamByName($filename, $options);
-        while (!$downloadStream->eof()) {
-            $next = $downloadStream->read(4096);
-            fwrite($stream, $next);
-        }
+        return $this->uploadConcern->uploadFromStream($filename, $stream, $options);
     }
 
     public function rename(ObjectID $id, string $newFilename)
     {
-        $this->files->updateOne(['_id' => $id], ['$set' => ['filename' => $newFilename]]);
+        $this->uploadConcern->rename($id, $newFilename);
+    }
+
+    public function openDownloadStream(ObjectID $id): DownloadStreamInterface
+    {
+        return $this->downloadConcern->openDownloadStream($id);
+    }
+
+    public function downloadToStream(ObjectID $id, $stream)
+    {
+        $this->downloadConcern->downloadToStream($id, $stream);
+    }
+
+    public function find(array $filter, FindOptions $options = null): \Traversable
+    {
+        return $this->searchConcern->find($filter, $options);
+    }
+
+    public function delete(ObjectID $id)
+    {
+        $this->deletionConcern->delete($id);
+    }
+
+    public function openDownloadStreamByName(string $filename, DownloadByNameOptions $options = null): DownloadStreamInterface
+    {
+        return $this->downloadConcern->openDownloadStreamByName($filename, $options);
+    }
+
+    public function downloadToStreamByName(string $filename, $stream, DownloadByNameOptions $options = null)
+    {
+        $this->downloadConcern->downloadToStreamByName($filename, $stream, $options);
     }
 
     public function drop()
     {
-        $this->files->drop();
-        $this->chunks->drop();
+        $this->deletionConcern->drop();
     }
 }
