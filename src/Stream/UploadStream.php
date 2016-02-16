@@ -1,7 +1,7 @@
 <?php
 namespace Helmich\GridFS\Stream;
 
-use Helmich\GridFS\UploadOptions;
+use Helmich\GridFS\Options\UploadOptions;
 use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDatetime;
