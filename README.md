@@ -80,7 +80,7 @@ Downloading files is also stream-oriented. Given the ID of an already existing f
 $file = $bucket->find(['filename' => 'foo.txt'], (new \Helmich\GridFS\Options\FindOptions)->withLimit(1))[0];
 
 $downloadStream = $bucket->openDownloadStream($file['_id']);
-echo $downloadStream->getContents();
+echo $downloadStream->readAll();
 
 // alternatively:
 while (!$downloadStream->eof()) {
@@ -112,6 +112,27 @@ Delete files from the bucket using the `delete` method:
 $bucket->delete($fileId);
 ```
 
+## Gimmicks
+
+### PSR-7 adapters
+
+I've implemented this package for a [PSR-7 compliant] web application. PSR-7 also heavily relies on streams, so I've found it useful to add an adapter class to map a `Helmich\GridFS\Stream\DownloadStreamInterface` to a `Psr\Http\Message\StreamInterface`. This is especially useful if you want to return GridFS files as a response body stream. The following example uses the [Slim framework][slim], but should be easily adaptable to other PSR-7 compliant frameworks:
+
+```
+$app->get(
+  '/documents/{name}',
+  function(RequestInterface $req, ResponseInterface $res, array $args) use ($bucket): ResponseInterface
+  {
+    $stream = $bucket->openDownloadStreamByName($args['name']);
+    return $res
+      ->withHeader('content-type', $stream->file()['metadata']['contenttype'])
+      ->withBody(new \Helmich\GridFS\Stream\Psr7\DownloadStreamAdapter($stream));
+  }
+);
+```
+
 [composer]: http://getcomposer.org
 [gridfs]: https://github.com/mongodb/specifications/blob/master/source/gridfs/gridfs-spec.rst
 [phpext]: http://php.net/manual/en/set.mongodb.php
+[psr7]: http://www.php-fig.org/psr/psr-7/
+[slim]: http://www.slimframework.com/
