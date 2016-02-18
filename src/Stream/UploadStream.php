@@ -50,12 +50,12 @@ class UploadStream implements UploadStreamInterface
         Collection $files,
         Collection $chunks
     ) {
-        $this->chunkSize = $chunkSize;
-        $this->objectID  = $objectID;
-        $this->files     = $files;
-        $this->filename  = $filename;
-        $this->options   = $options;
-        $this->chunks    = $chunks;
+        $this->chunkSize   = $chunkSize;
+        $this->objectID    = $objectID;
+        $this->files       = $files;
+        $this->filename    = $filename;
+        $this->options     = $options;
+        $this->chunks      = $chunks;
         $this->hashContext = hash_init('md5');
     }
 

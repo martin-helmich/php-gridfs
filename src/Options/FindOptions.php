@@ -71,13 +71,22 @@ class FindOptions
     }
 
     /**
-     * @param boolean $noCursorTimeout
      * @return self
      */
-    public function withNoCursorTimeout(bool $noCursorTimeout): FindOptions
+    public function withNoCursorTimeout(): FindOptions
     {
         $clone                  = clone $this;
-        $clone->noCursorTimeout = $noCursorTimeout;
+        $clone->noCursorTimeout = true;
+        return $clone;
+    }
+
+    /**
+     * @return self
+     */
+    public function withCursorTimeout(): FindOptions
+    {
+        $clone                  = clone $this;
+        $clone->noCursorTimeout = false;
         return $clone;
     }
 

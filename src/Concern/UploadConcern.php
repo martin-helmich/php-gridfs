@@ -15,7 +15,7 @@ class UploadConcern
         $this->initIfNecessary();
 
         $options    = $options ?? new UploadOptions();
-        $chunkSize  = $options->chunkSizeBytes() ?? $this->options->chunkSizeBytes();
+        $chunkSize  = $options->chunkSizeBytes() ?: $this->options->chunkSizeBytes();
         $documentId = new ObjectID();
 
         return new UploadStream($filename, $chunkSize, $documentId, $options, $this->files, $this->chunks);
@@ -26,7 +26,7 @@ class UploadConcern
         $this->initIfNecessary();
 
         $options      = $options ?? new UploadOptions();
-        $chunkSize    = $options->chunkSizeBytes() ?? $this->options->chunkSizeBytes();
+        $chunkSize    = $options->chunkSizeBytes() ?: $this->options->chunkSizeBytes();
         $targetStream = $this->openUploadStream($filename, $options);
 
         while ($data = fread($stream, $chunkSize)) {

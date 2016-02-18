@@ -6,7 +6,7 @@ class UploadOptions
     private $chunkSizeBytes;
     private $metadata;
 
-    public function __construct(int $chunkSizeBytes = null, array $metadata = null)
+    public function __construct(int $chunkSizeBytes = 0, array $metadata = [])
     {
         $this->chunkSizeBytes = $chunkSizeBytes;
         $this->metadata       = $metadata;
