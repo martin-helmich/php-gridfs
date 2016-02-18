@@ -1,6 +1,6 @@
 {
-  "name": "helmich/mongodb-gridfs",
-  "description": "GridFS implementation for the new MongoDB extension",
+  "name": "helmich/gridfs",
+  "description": "GridFS implementation for the MongoDB PHP extension",
   "type": "library",
   "license": "MIT",
   "authors": [
