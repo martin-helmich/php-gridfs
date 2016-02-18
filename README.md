@@ -116,7 +116,7 @@ $bucket->delete($fileId);
 
 ### PSR-7 adapters
 
-I've implemented this package for a [PSR-7 compliant] web application. PSR-7 also heavily relies on streams, so I've found it useful to add an adapter class to map a `Helmich\GridFS\Stream\DownloadStreamInterface` to a `Psr\Http\Message\StreamInterface`. This is especially useful if you want to return GridFS files as a response body stream. The following example uses the [Slim framework][slim], but should be easily adaptable to other PSR-7 compliant frameworks:
+I've implemented this package for a [PSR-7 compliant][psr7] web application. PSR-7 also heavily relies on streams, so I've found it useful to add an adapter class to map a `Helmich\GridFS\Stream\DownloadStreamInterface` to a `Psr\Http\Message\StreamInterface`. This is especially useful if you want to return GridFS files as a response body stream. The following example uses the [Slim framework][slim], but should be easily adaptable to other PSR-7 compliant frameworks:
 
 ```php
 $app->get(
