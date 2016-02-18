@@ -97,10 +97,14 @@ class DownloadStream implements DownloadStreamInterface
         $this->reset();
 
         $chunk = intdiv($n, $this->file['chunkSize']);
-        $this->cursor = $this->chunks->find(
+        $chunks = $this->chunks->find(
             ['files_id' => $this->file['_id']],
             ['sort' => ['n' => 1], 'skip' => $chunk]
         );
+
+        $this->pos = $chunk * $this->file['chunkSize'];
+        $this->cursor = new IteratorIterator($chunks);
+        $this->cursor->rewind();
 
         $remaining = $n % $this->file['chunkSize'];
         $this->read($remaining);

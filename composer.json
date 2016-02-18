@@ -14,9 +14,24 @@
     "ext-mongodb": "*",
     "mongodb/mongodb": "^1.0"
   },
+  "require-dev": {
+    "phpunit/phpunit": "^5.2",
+    "psr/http-message": "^1.0"
+  },
+  "suggest": {
+    "psr/http-message": "provides adapter classes for mapping GridFS streams to PSR-7 streams"
+  },
   "autoload": {
     "psr-4": {
       "Helmich\\GridFS\\": "src"
+    }
+  },
+  "autoload-dev": {
+    "files": [
+      "vendor/phpunit/phpunit/src/Framework/Assert/Functions.php"
+    ],
+    "psr-4": {
+      "Helmich\\GridFS\\Tests\\": "tests"
     }
   }
 }

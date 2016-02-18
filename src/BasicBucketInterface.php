@@ -1,7 +1,8 @@
 <?php
 namespace Helmich\GridFS;
 
-use Helmich\GridFS\Stream\{DownloadStreamInterface, UploadStreamInterface};
+use Helmich\GridFS\Stream\DownloadStreamInterface;
+use Helmich\GridFS\Stream\UploadStreamInterface;
 use Helmich\GridFS\Options\FindOptions;
 use Helmich\GridFS\Options\UploadOptions;
 use MongoDB\BSON\ObjectID;

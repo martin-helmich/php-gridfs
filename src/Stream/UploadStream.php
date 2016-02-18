@@ -84,12 +84,14 @@ class UploadStream implements UploadStreamInterface
 
     public function close()
     {
-        $lastChunk = [
-            'files_id' => $this->objectID,
-            'n' => $this->chunkCounter++,
-            'data' => new Binary($this->data, Binary::TYPE_GENERIC)
-        ];
-        $this->chunks->insertOne($lastChunk);
+        if (strlen($this->data) > 0) {
+            $lastChunk = [
+                'files_id' => $this->objectID,
+                'n' => $this->chunkCounter++,
+                'data' => new Binary($this->data, Binary::TYPE_GENERIC)
+            ];
+            $this->chunks->insertOne($lastChunk);
+        }
 
         $document = [
             '_id' => $this->objectID,
