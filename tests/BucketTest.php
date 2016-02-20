@@ -3,16 +3,17 @@ namespace Helmich\GridFS\Tests;
 
 use Helmich\GridFS\Bucket;
 use Helmich\GridFS\BucketInterface;
-use Helmich\GridFS\Exception\FileNotFoundException;
 use Helmich\GridFS\Options\BucketOptions;
+use Helmich\GridFS\Options\DownloadByNameOptions;
+use Helmich\GridFS\Options\FindOptions;
 use Helmich\GridFS\Options\UploadOptions;
+use Helmich\MongoMock\MockCollection;
 use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDatetime;
-use MongoDB\Collection;
 use MongoDB\Database;
+use MongoDB\Model\BSONDocument;
 use Prophecy\Argument;
-use Prophecy\Prophecy\ObjectProphecy;
 
 class BucketTest extends \PHPUnit_Framework_TestCase
 {
@@ -22,9 +23,6 @@ class BucketTest extends \PHPUnit_Framework_TestCase
 
     /** @var MockCollection */
     private $files, $chunks;
-
-    private $filesDocs = [];
-    private $chunksDocs = [];
 
     public function setUp()
     {
@@ -204,5 +202,141 @@ class BucketTest extends \PHPUnit_Framework_TestCase
     {
         $id = new ObjectID();
         $downStream = $this->bucket->openDownloadStream($id);
+    }
+
+    public function testFileContentsCanBeDownloadedToPhpStream()
+    {
+        $fileStream = fopen('php://temp', 'r+');
+
+        $stream = $this->bucket->openUploadStream('test.txt');
+        $stream->write('12345678');
+        $stream->close();
+
+        $id = $stream->fileId();
+
+        $this->bucket->downloadToStream($id, $fileStream);
+
+        rewind($fileStream);
+        assertThat(stream_get_contents($fileStream), equalTo('12345678'));
+    }
+
+    public function testFileContentsCanBeDownloadedFromStreamByName()
+    {
+        $firstStream = $this->bucket->openUploadStream('test.txt');
+        $firstStream->write('12345678');
+        $firstStream->close();
+        $id = $firstStream->fileId();
+
+        $secondStream = $this->bucket->openUploadStream('not-test.txt');
+        $secondStream->write('NONONO');
+        $secondStream->close();
+
+        $down = $this->bucket->openDownloadStreamByName('test.txt');
+
+        assertThat($down->file()['_id'], equalTo($id));
+    }
+
+    /**
+     * @expectedException \Helmich\GridFS\Exception\FileNotFoundException
+     */
+    public function testOpenDownloadStreamByNameThrowsExceptionWhenFileIsNotFound()
+    {
+        $firstStream = $this->bucket->openUploadStream('test.txt');
+        $firstStream->write('12345678');
+        $firstStream->close();
+
+        $secondStream = $this->bucket->openUploadStream('not-test.txt');
+        $secondStream->write('NONONO');
+        $secondStream->close();
+
+        $this->bucket->openDownloadStreamByName('foobar.txt');
+    }
+
+    public function dataForRevisionDownload()
+    {
+        yield [-1, 'c'];
+        yield [-2, 'b'];
+        yield [-3, 'a'];
+        yield [ 0, 'a'];
+        yield [ 1, 'b'];
+        yield [ 2, 'c'];
+    }
+
+    /**
+     * @param $revision
+     * @param $expectedId
+     * @dataProvider dataForRevisionDownload
+     */
+    public function testOpenDownloadStreamByNameSelectsLatestRevision($revision, $expectedId)
+    {
+        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())]);
+
+        $options = (new DownloadByNameOptions)->withRevision($revision);
+
+        $down = $this->bucket->openDownloadStreamByName('test.txt', $options);
+
+        assertThat($down->file()['_id'], equalTo($expectedId));
+    }
+
+    /**
+     * @param $revision
+     * @param $expectedId
+     * @dataProvider dataForRevisionDownload
+     */
+    public function testDownloadToStreamByNameSelectsLatestRevision($revision, $expectedId)
+    {
+        $fileStream = fopen('php://temp', 'r+');
+
+        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())]);
+
+        $this->chunks->documents[] = new BSONDocument(['_id' => 'x', 'files_id' => 'a', 'n' => 0, 'data' => new Binary('a', Binary::TYPE_GENERIC)]);
+        $this->chunks->documents[] = new BSONDocument(['_id' => 'y', 'files_id' => 'b', 'n' => 0, 'data' => new Binary('b', Binary::TYPE_GENERIC)]);
+        $this->chunks->documents[] = new BSONDocument(['_id' => 'z', 'files_id' => 'c', 'n' => 0, 'data' => new Binary('c', Binary::TYPE_GENERIC)]);
+
+        $options = (new DownloadByNameOptions)->withRevision($revision);
+
+        $this->bucket->downloadToStreamByName('test.txt', $fileStream, $options);
+
+        rewind($fileStream);
+        assertThat(stream_get_contents($fileStream), equalTo($expectedId));
+    }
+
+    public function testFindReturnsMatchingDocuments()
+    {
+        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())]);
+
+        $files = $this->bucket->find(['filename' => 'foo.txt']);
+        assertThat(count($files), equalTo(1));
+    }
+
+    public function testOptionsArePassedToFind()
+    {
+        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
+        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())]);
+
+        $options = (new FindOptions())
+            ->withBatchSize(1234)
+            ->withLimit(2345)
+            ->withMaxTimeMs(3456)
+            ->withNoCursorTimeout()
+            ->withSkip(4567)
+            ->withSort(['uploadDate' => 1]);
+
+        $this->bucket->find(['filename' => 'foo.txt'], $options);
+        assertThat($this->files, executedQuery(['filename' => 'foo.txt'], [
+            'batchSize' => 1234,
+            'limit' => 2345,
+            'maxTimeMS' => 3456,
+            'noCursorTimeout' => true,
+            'skip' => 4567,
+            'sort' => ['uploadDate' => 1]
+        ]));
     }
 }
