@@ -12,7 +12,6 @@ use MongoDB\BSON\Binary;
 use MongoDB\BSON\ObjectID;
 use MongoDB\BSON\UTCDatetime;
 use MongoDB\Database;
-use MongoDB\Model\BSONDocument;
 use Prophecy\Argument;
 
 class BucketTest extends \PHPUnit_Framework_TestCase
@@ -46,8 +45,8 @@ class BucketTest extends \PHPUnit_Framework_TestCase
     {
         $stream = $this->bucket->openUploadStream('test.txt');
 
-        assertThat($this->files->hasIndex(['filename' => 1, 'uploadDate' => 1]), isTrue());
-        assertThat($this->chunks->hasIndex(['files_id' => 1, 'n' => 1], ['unique' => true]), isTrue());
+        assertThat($this->files, collectionHasIndex(['filename' => 1, 'uploadDate' => 1]));
+        assertThat($this->chunks, collectionHasIndex(['files_id' => 1, 'n' => 1], ['unique' => true]));
     }
 
     public function testOpenUploadStreamDoesNotCreateIndicesWhenCollectionsAreNotEmpty()
@@ -73,20 +72,25 @@ class BucketTest extends \PHPUnit_Framework_TestCase
         assertThat($this->chunks->count(), equalTo(2));
         assertThat($this->files->count(), equalTo(1));
 
-        assertThat($this->chunks->documents[0]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[0]['n'], equalTo(0));
-        assertThat($this->chunks->documents[0]['data']->getData(), equalTo('1234'));
-        assertThat($this->chunks->documents[1]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[1]['n'], equalTo(1));
-        assertThat($this->chunks->documents[1]['data']->getData(), equalTo('5678'));
-
-        assertThat($this->files->documents[0]['_id'], equalTo($id));
-        assertThat($this->files->documents[0]['length'], equalTo(8));
-        assertThat($this->files->documents[0]['chunkSize'], equalTo(4));
-        assertThat($this->files->documents[0]['uploadDate'], isInstanceOf(UTCDatetime::class));
-        assertThat($this->files->documents[0]['md5'], equalTo(md5('12345678')));
-        assertThat($this->files->documents[0]['filename'], equalTo('test.txt'));
-        assertThat($this->files->documents[0]['metadata'], equalTo(['foo' => 'bar']));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 0,
+            'data'     => '1234'
+        ]));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 1,
+            'data'     => '5678'
+        ]));
+        assertThat($this->files, collectionHasDocument([
+            '_id'        => $id,
+            'length'     => 8,
+            'chunkSize'  => 4,
+            'uploadDate' => isInstanceOf(UTCDatetime::class),
+            'md5'        => md5('12345678'),
+            'filename'   => 'test.txt',
+            'metadata'   => equalTo(['foo' => 'bar'])
+        ]));
     }
 
     public function testChunksAreUploadedWhenWritingToUploadStreamWithOddLength()
@@ -100,12 +104,16 @@ class BucketTest extends \PHPUnit_Framework_TestCase
         assertThat($this->chunks->count(), equalTo(2));
         assertThat($this->files->count(), equalTo(1));
 
-        assertThat($this->chunks->documents[0]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[0]['n'], equalTo(0));
-        assertThat($this->chunks->documents[0]['data']->getData(), equalTo('1234'));
-        assertThat($this->chunks->documents[1]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[1]['n'], equalTo(1));
-        assertThat($this->chunks->documents[1]['data']->getData(), equalTo('567'));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 0,
+            'data'     => '1234'
+        ]));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 1,
+            'data'     => '567'
+        ]));
     }
 
     public function testChunksAreUploadedWhenReadingFromPhpStream()
@@ -119,12 +127,16 @@ class BucketTest extends \PHPUnit_Framework_TestCase
         assertThat($this->chunks->count(), equalTo(2));
         assertThat($this->files->count(), equalTo(1));
 
-        assertThat($this->chunks->documents[0]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[0]['n'], equalTo(0));
-        assertThat($this->chunks->documents[0]['data']->getData(), equalTo('1234'));
-        assertThat($this->chunks->documents[1]['files_id'], equalTo($id));
-        assertThat($this->chunks->documents[1]['n'], equalTo(1));
-        assertThat($this->chunks->documents[1]['data']->getData(), equalTo('5678'));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 0,
+            'data'     => '1234'
+        ]));
+        assertThat($this->chunks, collectionHasDocument([
+            'files_id' => $id,
+            'n'        => 1,
+            'data'     => '5678'
+        ]));
     }
 
     public function testUploadCanBeAborted()
@@ -154,12 +166,10 @@ class BucketTest extends \PHPUnit_Framework_TestCase
 
     public function testFilesCanBeRenamed()
     {
-        $id = new ObjectID();
-
-        $this->files->documents[] = ['_id' => $id, 'filename' => 'old.txt'];
+        $id = $this->files->insertOne(['filename' => 'old.txt'])->getInsertedId();
         $this->bucket->rename($id, 'new.txt');
 
-        assertThat($this->files->documents[0]['filename'], equalTo('new.txt'));
+        assertThat($this->files, collectionHasDocument(['_id' => $id, 'filename' => 'new.txt']));
     }
 
     public function testFileContentsCanBeDownloadedFromStream()
@@ -269,12 +279,13 @@ class BucketTest extends \PHPUnit_Framework_TestCase
      */
     public function testOpenDownloadStreamByNameSelectsLatestRevision($revision, $expectedId)
     {
-        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())]);
+        $this->files->insertMany([
+            ['_id' => 'a', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)],
+            ['_id' => 'b', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)],
+            ['_id' => 'c', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())],
+        ]);
 
         $options = (new DownloadByNameOptions)->withRevision($revision);
-
         $down = $this->bucket->openDownloadStreamByName('test.txt', $options);
 
         assertThat($down->file()['_id'], equalTo($expectedId));
@@ -289,13 +300,17 @@ class BucketTest extends \PHPUnit_Framework_TestCase
     {
         $fileStream = fopen('php://temp', 'r+');
 
-        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())]);
+        $ids = $this->files->insertMany([
+            ['filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() - 120)],
+            ['filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time() -  60)],
+            ['filename' => 'test.txt', 'uploadDate' => new UTCDatetime(time())],
+        ])->getInsertedIds();
 
-        $this->chunks->documents[] = new BSONDocument(['_id' => 'x', 'files_id' => 'a', 'n' => 0, 'data' => new Binary('a', Binary::TYPE_GENERIC)]);
-        $this->chunks->documents[] = new BSONDocument(['_id' => 'y', 'files_id' => 'b', 'n' => 0, 'data' => new Binary('b', Binary::TYPE_GENERIC)]);
-        $this->chunks->documents[] = new BSONDocument(['_id' => 'z', 'files_id' => 'c', 'n' => 0, 'data' => new Binary('c', Binary::TYPE_GENERIC)]);
+        $this->chunks->insertMany([
+            ['files_id' => $ids[0], 'n' => 0, 'data' => new Binary('a', Binary::TYPE_GENERIC)],
+            ['files_id' => $ids[1], 'n' => 0, 'data' => new Binary('b', Binary::TYPE_GENERIC)],
+            ['files_id' => $ids[2], 'n' => 0, 'data' => new Binary('c', Binary::TYPE_GENERIC)],
+        ]);
 
         $options = (new DownloadByNameOptions)->withRevision($revision);
 
@@ -307,9 +322,11 @@ class BucketTest extends \PHPUnit_Framework_TestCase
 
     public function testFindReturnsMatchingDocuments()
     {
-        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())]);
+        $this->files->insertMany([
+            ['filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)],
+            ['filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)],
+            ['filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())],
+        ]);
 
         $files = $this->bucket->find(['filename' => 'foo.txt']);
         assertThat(count($files), equalTo(1));
@@ -317,9 +334,11 @@ class BucketTest extends \PHPUnit_Framework_TestCase
 
     public function testOptionsArePassedToFind()
     {
-        $this->files->documents[] = new BSONDocument(['_id' => 'a', 'filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'b', 'filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)]);
-        $this->files->documents[] = new BSONDocument(['_id' => 'c', 'filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())]);
+        $this->files->insertMany([
+            ['filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)],
+            ['filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)],
+            ['filename' => 'baz.txt', 'uploadDate' => new UTCDatetime(time())],
+        ]);
 
         $options = (new FindOptions())
             ->withBatchSize(1234)
@@ -330,7 +349,7 @@ class BucketTest extends \PHPUnit_Framework_TestCase
             ->withSort(['uploadDate' => 1]);
 
         $this->bucket->find(['filename' => 'foo.txt'], $options);
-        assertThat($this->files, executedQuery(['filename' => 'foo.txt'], [
+        assertThat($this->files, collectionExecutedQuery(['filename' => 'foo.txt'], [
             'batchSize' => 1234,
             'limit' => 2345,
             'maxTimeMS' => 3456,
@@ -338,5 +357,32 @@ class BucketTest extends \PHPUnit_Framework_TestCase
             'skip' => 4567,
             'sort' => ['uploadDate' => 1]
         ]));
+    }
+
+    public function testDeleteRemotesFilesAndChunks()
+    {
+        $fileOne = $this->files->insertOne(['filename' => 'foo.txt', 'uploadDate' => new UTCDatetime(time() - 120)])->getInsertedId();
+        $fileTwo = $this->files->insertOne(['filename' => 'bar.txt', 'uploadDate' => new UTCDatetime(time() -  60)])->getInsertedId();
+
+        $this->chunks->insertMany([
+            ['files_id' => $fileOne, 'n' => 0, 'data' => new Binary('a', Binary::TYPE_GENERIC)],
+            ['files_id' => $fileOne, 'n' => 1, 'data' => new Binary('a', Binary::TYPE_GENERIC)],
+            ['files_id' => $fileTwo, 'n' => 0, 'data' => new Binary('a', Binary::TYPE_GENERIC)],
+        ]);
+
+        $this->bucket->delete($fileOne);
+
+        assertThat($this->files->count(), equalTo(1));
+        assertThat($this->files->count(['_id' => $fileOne]), equalTo(0));
+
+        assertThat($this->chunks->count(), equalTo(1));
+        assertThat($this->chunks->count(['files_id' => $fileOne]), equalTo(0));
+    }
+
+    public function testDropDropsCollections()
+    {
+        $this->bucket->drop();
+        assertThat($this->files->dropped, isTrue());
+        assertThat($this->chunks->dropped, isTrue());
     }
 }
