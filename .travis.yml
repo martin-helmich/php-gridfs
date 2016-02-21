@@ -4,6 +4,7 @@ php:
   - 7.0
   - hhvm
 install:
+  - pecl install mongodb
   - composer install --prefer-dist
 script:
   - vendor/bin/phpunit --coverage-clover build/logs/clover.xml
