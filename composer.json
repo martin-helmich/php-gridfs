@@ -23,7 +23,8 @@
   "require-dev": {
     "phpunit/phpunit": "^5.2",
     "psr/http-message": "^1.0",
-    "helmich/mongomock": "dev-master"
+    "helmich/mongomock": "dev-master",
+    "codeclimate/php-test-reporter": "^0.3.0"
   },
   "suggest": {
     "psr/http-message": "provides adapter classes for mapping GridFS streams to PSR-7 streams"
