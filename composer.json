@@ -3,6 +3,12 @@
   "description": "GridFS implementation for the MongoDB PHP extension",
   "type": "library",
   "license": "MIT",
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "git://github.com/martin-helmich/php-mongomock"
+    }
+  ],
   "authors": [
     {
       "name": "Martin Helmich",
@@ -16,7 +22,8 @@
   },
   "require-dev": {
     "phpunit/phpunit": "^5.2",
-    "psr/http-message": "^1.0"
+    "psr/http-message": "^1.0",
+    "helmich/mongomock": "dev-master"
   },
   "suggest": {
     "psr/http-message": "provides adapter classes for mapping GridFS streams to PSR-7 streams"
@@ -28,7 +35,8 @@
   },
   "autoload-dev": {
     "files": [
-      "vendor/phpunit/phpunit/src/Framework/Assert/Functions.php"
+      "vendor/phpunit/phpunit/src/Framework/Assert/Functions.php",
+      "vendor/helmich/mongomock/src/Functions.php"
     ],
     "psr-4": {
       "Helmich\\GridFS\\Tests\\": "tests"
