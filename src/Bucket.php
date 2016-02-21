@@ -77,7 +77,10 @@ class Bucket implements BucketInterface
         $this->deletionConcern->delete($id);
     }
 
-    public function openDownloadStreamByName(string $filename, DownloadByNameOptions $options = null): DownloadStreamInterface
+    public function openDownloadStreamByName(
+        string $filename,
+        DownloadByNameOptions $options = null
+    ): DownloadStreamInterface
     {
         return $this->downloadConcern->openDownloadStreamByName($filename, $options);
     }

@@ -27,5 +27,4 @@ trait ConcernProperties
         $this->options = $options;
         $this->bucket  = $bucket;
     }
-
 }

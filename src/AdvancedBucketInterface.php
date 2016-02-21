@@ -55,5 +55,4 @@ interface AdvancedBucketInterface
      * @return void
      */
     public function drop();
-
 }

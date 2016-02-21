@@ -49,5 +49,4 @@ class UploadOptions
     {
         return $this->metadata;
     }
-
 }

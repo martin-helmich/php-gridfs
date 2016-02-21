@@ -96,5 +96,4 @@ class BucketOptions
     {
         return $this->chunksName;
     }
-
 }
