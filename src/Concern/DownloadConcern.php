@@ -33,8 +33,7 @@ class DownloadConcern
     public function openDownloadStreamByName(
         string $filename,
         DownloadByNameOptions $options = null
-    ): DownloadStreamInterface
-    {
+    ): DownloadStreamInterface {
         $options     = $options ?? new DownloadByNameOptions();
         $findOptions = (new FindOptions())->withSort(['uploadDate' => 1]);
 

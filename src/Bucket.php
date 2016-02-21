@@ -80,8 +80,7 @@ class Bucket implements BucketInterface
     public function openDownloadStreamByName(
         string $filename,
         DownloadByNameOptions $options = null
-    ): DownloadStreamInterface
-    {
+    ): DownloadStreamInterface {
         return $this->downloadConcern->openDownloadStreamByName($filename, $options);
     }
 

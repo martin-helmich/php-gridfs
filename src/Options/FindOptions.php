@@ -159,6 +159,4 @@ class FindOptions
     {
         return $this->sort;
     }
-
-
 }
