@@ -4,6 +4,11 @@ This package provides a userspace implementation of the [GridFS specification][g
 
 **This library requires PHP 7!**
 
+## Author and license
+
+Martin Helmich  
+This library is [MIT-licensed](LICENSE.txt).
+
 ## Installation
 
 Use [Composer][composer]:
