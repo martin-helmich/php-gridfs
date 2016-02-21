@@ -1,5 +1,10 @@
 # GridFS implementation for the PHP MongoDB driver
 
+[![Build Status](https://travis-ci.org/martin-helmich/php-gridfs.svg?branch=master)](https://travis-ci.org/martin-helmich/php-gridfs)
+[![Code Climate](https://codeclimate.com/github/martin-helmich/php-gridfs/badges/gpa.svg)](https://codeclimate.com/github/martin-helmich/php-gridfs)
+[![Issue Count](https://codeclimate.com/github/martin-helmich/php-gridfs/badges/issue_count.svg)](https://codeclimate.com/github/martin-helmich/php-gridfs)
+[![Test Coverage](https://codeclimate.com/github/martin-helmich/php-gridfs/badges/coverage.svg)](https://codeclimate.com/github/martin-helmich/php-gridfs/coverage)
+
 This package provides a userspace implementation of the [GridFS specification][gridfs] for PHP's new [`mongodb`][phpext] extension (not to be confused with the similarly named `mongo` extension).
 
 **This library requires PHP 7!**
